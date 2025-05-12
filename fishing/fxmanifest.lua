@@ -8,7 +8,8 @@ version '1.1.0'
 
 shared_scripts {
     '@es_extended/imports.lua',
-    '@ox_lib/init.lua'
+    '@ox_lib/init.lua',
+    'config.lua'
 }
 
 client_script 'client/main.lua'
