@@ -1,6 +1,3 @@
------------------------------------------------------
------------------------[FISHING]---------------------
------------------------------------------------------
 local fishing, isBusy = false, false
 local bait = 'none'
 
@@ -33,20 +30,9 @@ CreateThread(function()
 		if fishing then 	
 			Wait(0)	
 			local playerPed = PlayerPedId()
-		
-			if IsPedInAnyVehicle(playerPed) or IsControlJustPressed(0, 252) then
-				debugPrint('Fishing activity got canceled.', 'info')
-				fishing = false
-				TriggerEvent('fishing:break')
-				lib.notify({
-					description = 'You reeled in your fishing rod', 
-					type = 'inform',
-					showDuration = true,
-					position = 'top',
-				})
-			end
 
-			if IsEntityDead(playerPed) or IsEntityInWater(playerPed) then
+			if IsPedInAnyVehicle(playerPed) or IsControlJustPressed(0, 252) or IsEntityDead(playerPed) or IsEntityInWater(playerPed) then
+				debugPrint('Fishing activity got canceled.', 'info')
 				fishing = false
 				TriggerEvent('fishing:break')
 				lib.notify({
@@ -96,7 +82,6 @@ RegisterNetEvent('fishing:break', function()
 		lib.cancelSkillCheck()
 		debugPrint('Canceled skill check!', 'info')
 	end
-
 	StopFishingAnimation()
 	TriggerServerEvent('fishing:stop')
 end)
@@ -106,48 +91,15 @@ RegisterNetEvent('fishing:setbait', function(bool)
 	debugPrint('Bait enabled: '..tostring(bool), 'info')
 end)
 
-RegisterNetEvent('fishing:fishstart', function()
-	local playerPed = PlayerPedId()
-	local playerPos = GetEntityCoords(playerPed)
-	debugPrint('Started fishing at '..playerPos, 'info')
-
-	if IsPedInAnyVehicle(playerPed) then
-		lib.notify({
-			description = 'Fishing from a vehicle is not allowed', 
-			position = 'top', 
-			type = 'error'
-		})
-	else
-		if playerPos.y >= 8200 or playerPos.y <= -4000 or playerPos.x <= -3500 or playerPos.x >= 4200 then
-
-			if fishing then 
-				lib.notify({
-					description = 'You have already cast your fishing rod', 
-					position = 'top', 
-					type = 'error'
-				})
-				return
-			end
-
-			lib.notify({
-				description = 'You cast your fishing rod', 
-				position = 'top', 
-				type = 'success'
-			})
-
-			StartFishingAnimation()
-			
-			fishing = true
-			TriggerServerEvent('fishing:start')
-			debugPrint('set fishing to: '..tostring(fishing), 'info')
-		else
-			lib.notify({
-				description = 'You are too close to the shore', 
-				position = 'top', 
-				type = 'error'
-			})
-		end
+RegisterNetEvent('fishing:startClient', function()
+	if fishing then
+		lib.notify({ description = 'You are already fishing', type = 'error', position = 'top' })
+		return
 	end
+
+	StartFishingAnimation()
+	fishing = true
+	debugPrint('Fishing started (client side confirmed)', 'info')
 end)
 
 local fishingAnimation = {
@@ -164,25 +116,13 @@ local fishingAnimation = {
 
 function StartFishingAnimation()
 	RequestAnimDict(fishingAnimation.dict)
-	while not HasAnimDictLoaded(fishingAnimation.dict) do
-		Wait(0)
-	end
-
-	debugPrint('starting animation', 'info')
+	while not HasAnimDictLoaded(fishingAnimation.dict) do Wait(0) end
 	TaskPlayAnim(PlayerPedId(), fishingAnimation.dict, fishingAnimation.anim, 8.0, -8.0, -1, fishingAnimation.emoteLoop, 0, false, false, false)
-	
-	local playerPed = PlayerPedId()
-	local boneIndex = GetPedBoneIndex(playerPed, fishingAnimation.propBone)
-	
-	if boneIndex ~= -1 then
-		local boneCoords = GetWorldPositionOfEntityBone(playerPed, boneIndex)
-		local propCoords = vector3(boneCoords.x, boneCoords.y, boneCoords.z)
-		
-		fishingAnimation.propEntity = CreateObject(GetHashKey(fishingAnimation.propModel), propCoords.x, propCoords.y, propCoords.z, true, true, true)
-		
-		if DoesEntityExist(fishingAnimation.propEntity) then
-			AttachEntityToEntity(fishingAnimation.propEntity, playerPed, boneIndex, fishingAnimation.propPlacement.x, fishingAnimation.propPlacement.y, fishingAnimation.propPlacement.z, fishingAnimation.propPlacement.xRot, fishingAnimation.propPlacement.yRot, fishingAnimation.propPlacement.zRot, true, true, false, true, 1, true)
-		end
+	local boneIndex = GetPedBoneIndex(PlayerPedId(), fishingAnimation.propBone)
+	local coords = GetWorldPositionOfEntityBone(PlayerPedId(), boneIndex)
+	fishingAnimation.propEntity = CreateObject(GetHashKey(fishingAnimation.propModel), coords.x, coords.y, coords.z, true, true, true)
+	if DoesEntityExist(fishingAnimation.propEntity) then
+		AttachEntityToEntity(fishingAnimation.propEntity, PlayerPedId(), boneIndex, fishingAnimation.propPlacement.x, fishingAnimation.propPlacement.y, fishingAnimation.propPlacement.z, fishingAnimation.propPlacement.xRot, fishingAnimation.propPlacement.yRot, fishingAnimation.propPlacement.zRot, true, true, false, true, 1, true)
 	end
 end
 
@@ -191,23 +131,10 @@ function StopFishingAnimation()
 		DeleteEntity(fishingAnimation.propEntity)
 		fishingAnimation.propEntity = nil
 	end
-
 	ClearPedTasks(PlayerPedId())
 	RemoveAnimDict(fishingAnimation.dict)
 end
 
-RegisterNetEvent('fishing:spawnPed', function()
-	RequestModel(GetHashKey("A_C_SharkTiger"))
-	while not HasModelLoaded(GetHashKey("A_C_SharkTiger")) do
-		Wait(20)
-	end
-		
-	local pos = GetEntityCoords(PlayerPedId())
-	local ped = CreatePed(29, 0x06C3F072, pos.x, pos.y, pos.z, 90.0, true, false)
-	SetEntityHealth(ped, 0)
-end)
-
-RegisterNetEvent('fish:message')
-AddEventHandler('fish:message', function(message)
+RegisterNetEvent('fish:message', function(message)
 	ESX.ShowNotification(message)
 end)
