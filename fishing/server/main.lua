@@ -1,8 +1,7 @@
 local ox_inventory = exports.ox_inventory
 print("Fishing by FelixL has started :)")
 
-ESX = nil
-TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+ESX = exports["es_extended"]:getSharedObject()
 
 local fishingPlayers = {}
 
